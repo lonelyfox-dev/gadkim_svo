@@ -36,11 +36,11 @@ services = new Proxy(services, {
             set(target, prop, val) {
                 target[prop] = val;
 
-                sendTime();
+                // sendTime();
             }
         });
 
-        sendTime();
+        // sendTime();
 
         return true;
     }
@@ -86,6 +86,10 @@ app.ws('/model-time', (ws) => {
     services.push({});
     ws.send(0);
 });
+
+app.get('/next', () => {
+    sendTime();
+})
 
 app.listen(port, () => {
     console.log(`Model time service is running on port ${port}`);
