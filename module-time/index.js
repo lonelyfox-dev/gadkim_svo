@@ -5,6 +5,16 @@ const port = 3000;
 
 let events = [];
 
+events = new Proxy(events, {
+    set(target, prop, value) {
+        target[prop] = value;
+
+        target.sort((a, b) => a.eventTime - b.eventTime);
+
+        return true;
+    }
+})
+
 let services = [];
 
 const sendTime = () => {
