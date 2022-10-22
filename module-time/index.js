@@ -1,11 +1,23 @@
 const express = require('express');
+const axios = require('axios').default;
 const app = express();
-require('express-ws')(app)
 const port = 3000;
 
-let events = [];
+let modelTime = 0;
 
-events = new Proxy(events, {
+const services = new Proxy({}, {
+    set(target, prop, val) {
+        target[prop] = new Proxy(val, {
+            set(target, prop, val) {
+                target[prop] = val;
+            }
+        });
+
+        return true;
+    }
+});
+
+const events = new Proxy([], {
     set(target, prop, value) {
         target[prop] = value;
 
@@ -15,80 +27,46 @@ events = new Proxy(events, {
     }
 })
 
-let services = [];
-
 const sendTime = () => {
-    if (services.reduce((res, el) => res && el.readyToGetTime, true)) {
-        const modelTime = events[0]?.eventTime || 0;
+    if (services.reduce((res, el) => res && el.readyForEvent, true)) {
+        modelTime = events[0] || 0;
 
         events.splice(0, 1);
 
         services.forEach(el => {
-            el.readyToGetTime = false;
-            el.socket.send(modelTime);
+            el.readyForEvent = false;
+            axios.get(`http://localhost:${el.port}/model-time`);
         })
     }
 }
 
-services = new Proxy(services, {
-    set(target, prop, val) {
-        target[prop] = new Proxy(val, {
-            set(target, prop, val) {
-                target[prop] = val;
+app.get('/register', (req, res) => {
+    services[req.query.serviceId] = {readyForEvent: false, port: req.query.port };
+    console.log(services);
+    res.status(200);
+    res.end();
+})
 
-                // sendTime();
-            }
-        });
+app.get('/ready-for-event', (req, res) => {
+    services[req.query.serviceId].readyForEvent = true;
+    res.status(200);
+    res.end();
+})
 
-        // sendTime();
-
-        return true;
-    }
-});
-
-app.get('/', (req, res) => {
-    res.send('Hello World!');
-});
+app.get('/new-event', (req, res) => {
+    events.push(req.query.eventTime);
+    res.status(200);
+    res.end();
+})
 
 app.get('/model-time', (req, res) => {
-    res.send(modelTime);
+    res.status(200).send(`${modelTime}`);
+    res.end();
 });
 
-app.ws('/model-time', (ws) => {
-    ws.on('message', (messageStr) => {
-        const message = JSON.parse(messageStr);
-
-        switch (message.type) {
-            case ('CONNECT'): {
-                const {serviceId} = message.data;
-
-                services[services.length - 1] = {socket: ws, serviceId, readyToGetTime: false};
-                break;
-            }
-            case ('NEW_EVENT'): {
-                const {eventTime} = message.data;
-
-                events.push({eventTime});
-                break;
-            }
-            case ('READY_FOR_EVENT'): {
-                const {serviceId} = message.data;
-
-                services.find(el => el.serviceId === serviceId).readyToGetTime = true;
-                break;
-            }
-            default: {
-                break;
-            }
-        }
-    });
-
-    services.push({});
-    ws.send(0);
-});
-
-app.get('/next', () => {
+app.get('/next', (req, res) => {
     sendTime();
+    res.end();
 })
 
 app.listen(port, () => {
