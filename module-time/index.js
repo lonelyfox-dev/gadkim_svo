@@ -35,7 +35,7 @@ const sendTime = () => {
 
         services.forEach(el => {
             el.readyForEvent = false;
-            axios.get(`http://localhost:${el.port}/model-time`);
+            axios.get(`http://localhost:${el.port}/model-time?model-time=${modelTime}`);
         })
     }
 }
