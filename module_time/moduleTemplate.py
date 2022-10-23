@@ -1,10 +1,8 @@
-from glob import glob
 from fastapi import Body, FastAPI, Request
-from starlette import status
-from starlette.responses import Response, HTMLResponse
 import uvicorn
 import requests
 
+__host = '192.168.1.74'
 __clock_port = 3000 
 
 app = FastAPI()
@@ -48,15 +46,16 @@ def init(_port, _module_id, *params):
             __createDelete(param[1], param[2])
 
     # send get to localhost:3000/register?service_id={module-id}&port={port}
-    requests.get("http://localhost:%d/register?service_id=%s&port=%d" % (__clock_port, __module_id, _port))
+    requests.get("http://%s:%d/register?service_id=%s&port=%d" % (__host, __clock_port, __module_id, _port))
+    readyToEvent()
     uvicorn.run(app, host="localhost", port=_port)
 
 def createEvent(time):
     # send get to localhost:3000/new-event?event-time={time}
-    requests.get("http://localhost:%d/new-event?event_time=%d" % (__clock_port, time))
+    requests.get("http://%s:%d/new-event?event_time=%d" % (__host, __clock_port, time))
 
 def readyToEvent():
-    requests.get("http://localhost:%d/ready-for-event?service_id=%s" % (__clock_port, __module_id))
+    requests.get("http://%s:%d/ready-for-event?service_id=%s" % (__host, __clock_port, __module_id))
     # send get to localhost:3000/ready-for-event?service_id={module-id}
 
 # if __name__ == "__main__":
