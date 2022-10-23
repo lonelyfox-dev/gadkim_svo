@@ -1,5 +1,6 @@
 from cgi import print_form
 from csv import excel
+import json
 from numpy import int64
 import pandas as pd
 import requests
@@ -8,9 +9,18 @@ import random
 import os
 from datetime import timedelta, datetime
 
-port = 3332
+port = 8888
 
 __excel_data : pd.DataFrame
+
+def phonk(row):
+    timestamp = row['Дата и время']
+    typeS = row['AD (A-прилет, D-вылет)']
+    parking = row['Номер места стоянки']
+    gate = row['Номер гейта']
+    passangers = row['Количество пассажиров']
+    
+    requests.get("http://localhost:{}/getTask?time={}&typeS={}&parking={}&gate={}&pass={}".format(port ,timestamp, typeS, parking, gate, passangers)) 
 
 def get_next_flight(data):
     global __excel_data
@@ -19,7 +29,9 @@ def get_next_flight(data):
     next_flight = next_flight.dropna()
     idx = next_flight.index
     __excel_data = __excel_data.drop(index=idx)
-    #requests.get("http://localhost:%d/ready-for-event?service_id=%s" % (port, __excel_data.to_dict('recodrs'))) допилить
+    js = next_flight.to_json(orient='records')
+    parsed = json.loads(js)
+    next_flight.apply(phonk, axis=1)
     return 200
 
 def init(path):
@@ -31,4 +43,5 @@ def init(path):
 
     __excel_data['Дата и время']
     __excel_data['Дата и время'] = (pd.to_numeric(__excel_data['Дата и время'].values) / 10 ** 9).astype(int64)
+    __excel_data['Дата и время'] = __excel_data[__excel_data['AD (A-прилет, D-вылет)'] == 'D']['Дата и время'] - 1800
 
